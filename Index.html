@@ -478,66 +478,90 @@
                 }
             };
             
-            // --- Prompt Input Handling ---
+            // --- Text Area & Controls ---
             const updateCounts = () => {
                 const text = mainPrompt.value;
                 const charCount = text.length;
-                const words = text.trim() ? text.trim().split(/\s+/) : [];
-                const wordCount = words.length;
-
+                const words = text.trim().split(/\s+/).filter(Boolean);
+                const wordCount = words.length === 1 && words[0] === '' ? 0 : words.length;
+                
                 charCountEl.textContent = `${charCount}/2000 characters`;
                 wordCountEl.textContent = `${wordCount} words`;
-                generateBtn.disabled = text.trim().length === 0;
             };
             mainPrompt.addEventListener('input', updateCounts);
-            updateCounts(); 
-
-            // --- Quality Slider ---
+            
             qualitySlider.addEventListener('input', () => {
                 qualityValueEl.textContent = qualitySlider.value;
             });
 
-            // --- Image Upload Handling ---
-            const handleFiles = (files) => {
-                const file = files[0];
-                if (file && file.type.startsWith('image/')) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        imagePreview.src = e.target.result;
-                        uploadedImageData = {
-                            base64: e.target.result.split(',')[1],
-                            mimeType: file.type
-                        };
-                        imagePreviewCard.classList.remove('hidden');
-                        describeImageBtn.disabled = false;
-                    };
-                    reader.readAsDataURL(file);
+            // --- Image Upload & Handling ---
+            const handleFile = (file) => {
+                if (!file) return;
+
+                if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+                    showToast('Invalid file type. Please use JPG, PNG, or WebP.');
+                    return;
                 }
+
+                if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                    showToast('File is too large. Maximum size is 10MB.');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreview.src = e.target.result;
+                    const [header, base64] = e.target.result.split(',');
+                    const mimeType = header.match(/:(.*?);/)[1];
+                    
+                    uploadedImageData = { base64: base64, mimeType: mimeType };
+                    
+                    describeImageBtn.disabled = false;
+                    imagePreviewCard.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            };
+
+            const resetImageUpload = () => {
+                uploadedImageData = { base64: null, mimeType: null };
+                imagePreview.src = '#';
+                imagePreviewCard.classList.add('hidden');
+                fileUpload.value = '';
+                describeImageBtn.disabled = true;
             };
 
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                imageDropArea.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false);
+                imageDropArea.addEventListener(eventName, e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }, false);
             });
+
             ['dragenter', 'dragover'].forEach(eventName => {
                 imageDropArea.addEventListener(eventName, () => imageDropArea.classList.add('border-indigo-500', 'dark:border-indigo-400'), false);
             });
+
             ['dragleave', 'drop'].forEach(eventName => {
                 imageDropArea.addEventListener(eventName, () => imageDropArea.classList.remove('border-indigo-500', 'dark:border-indigo-400'), false);
             });
 
-            imageDropArea.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files), false);
-            fileUpload.addEventListener('change', (e) => handleFiles(e.target.files), false);
-            removeImageBtn.addEventListener('click', () => {
-                imagePreview.src = '#';
-                imagePreviewCard.classList.add('hidden');
-                fileUpload.value = '';
-                uploadedImageData = { base64: null, mimeType: null };
-                describeImageBtn.disabled = true;
+            imageDropArea.addEventListener('drop', e => {
+                handleFile(e.dataTransfer.files[0]);
+            }, false);
+
+            fileUpload.addEventListener('change', e => {
+                handleFile(e.target.files[0]);
             });
-            
+
+            removeImageBtn.addEventListener('click', resetImageUpload);
+
             // --- Gemini API Integration ---
             const callGeminiAPI = async (payload) => {
-                const apiKey = ""; // Per instructions, this is populated by the environment.
+                const apiKey = "AIzaSyDUYUjoLLILnyNZjO9aLaPQ7n7yO9lhP2U"; // <-- PASTE YOUR KEY HERE
+                if (apiKey === "PASTE_YOUR_GEMINI_API_KEY_HERE") {
+                    showToast("API Key is missing. Please add it to the script.");
+                    throw new Error("API Key not set.");
+                }
                 const model = 'gemini-2.5-flash-preview-05-20';
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
@@ -842,5 +866,8 @@
     </script>
 </body>
 </html>
+
+
+
 
 
