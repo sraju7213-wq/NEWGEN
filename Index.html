@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RajuPrompter - AI Prompt Generator</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        };
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -414,6 +419,7 @@
             const libraryEmptyState = document.getElementById('library-empty-state');
             
             // --- App State ---
+            const CHARACTER_LIMIT = 600;
             let promptLibrary = JSON.parse(localStorage.getItem('rajuPrompterLibrary')) || [];
             let uploadedImageData = { base64: null, mimeType: null };
 
@@ -468,6 +474,25 @@
                         `<svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>`;
                     button.innerHTML = `${icon}<span>${defaultText}</span>`;
                 }
+            };
+
+            const enforceCharacterLimit = (text, limit = CHARACTER_LIMIT) => {
+                if (!text) return '';
+                const trimmed = text.trim();
+                if (trimmed.length <= limit) return trimmed;
+
+                const truncated = trimmed.slice(0, limit - 1);
+                const breakpoints = ['. ', '! ', '? ', '; ', ', ', ' '];
+                for (const breakpoint of breakpoints) {
+                    const index = truncated.lastIndexOf(breakpoint);
+                    if (index !== -1 && index >= limit * 0.5) {
+                        const candidate = `${truncated.slice(0, index + (breakpoint.trim().length === 1 ? 1 : breakpoint.length - 1)).trim()}…`;
+                        return candidate.length <= limit ? candidate : `${candidate.slice(0, limit - 1)}…`;
+                    }
+                }
+
+                const fallback = `${truncated.trim()}…`;
+                return fallback.length <= limit ? fallback : `${fallback.slice(0, limit - 1)}…`;
             };
             
             // --- Text Area & Controls ---
@@ -599,10 +624,10 @@
                 const describeType = document.getElementById('describe-type').value;
                 
                 const visionPrompts = {
-                    'Analyze Scene': "Provide a detailed, comprehensive description of this scene for a text-to-image AI. Mention the setting, key subjects, their actions, the overall mood, and the lighting. Be descriptive and clear.",
-                    'Describe Style': "Analyze the artistic style of this image for a text-to-image AI. Describe the medium (e.g., photograph, oil painting, digital art), the color palette, texture, composition, and the overall aesthetic (e.g., surrealist, photorealistic, minimalist).",
-                    'Identify Objects': "List the main objects and subjects present in this image with high precision, formatted as a comma-separated list suitable for a text-to-image prompt.",
-                    'Generate Artistic Interpretation': "Provide a creative and artistic interpretation of this image for a text-to-image AI. Don't just describe what you see, but evoke a feeling or story. Use metaphorical and vivid language to create an inspiring prompt."
+                    'Analyze Scene': "Analyze the uploaded image and reply with a single paragraph under 600 characters that focuses on the environment, background elements, lighting, and perspective of the scene. Keep it concise and avoid unrelated character details unless they affect the setting.",
+                    'Describe Style': "Describe the artistic style of the uploaded image in under 600 characters. Mention the medium, color palette, texture, composition, and overall aesthetic in a direct, to-the-point way.",
+                    'Identify Objects': "List the main subjects, objects, clothing, or props that stand out in this image as a comma-separated series of short phrases. Stay under 600 characters and keep the list focused on tangible items.",
+                    'Generate Artistic Interpretation': "Provide an artistic interpretation under 600 characters that captures the mood, emotion, and visual story implied by the image. Reference color, expression, and composition to convey the atmosphere."
                 };
 
                 const userPrompt = visionPrompts[describeType] || "Describe this image for a text-to-image prompt.";
@@ -618,7 +643,11 @@
 
                 try {
                     const description = await callGeminiAPI(payload);
-                    mainPrompt.value = description;
+                    const limitedDescription = enforceCharacterLimit(description);
+                    if (limitedDescription.length < description.trim().length) {
+                        showToast(`Analysis trimmed to ${CHARACTER_LIMIT} characters for clarity.`);
+                    }
+                    mainPrompt.value = limitedDescription;
                     updateCounts();
                 } catch (error) {
                     showToast(`Error describing image: ${error.message}`);
