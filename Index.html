@@ -766,8 +766,8 @@ Follow these strict formatting rules for every prompt you return:
                     tabPanel.innerHTML = `
                         <p class="text-gray-800 dark:text-gray-200 break-words mb-4">${finalPrompt}</p>
                         <div class="flex space-x-2">
-                            <button class="copy-btn flex-1 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-sm font-medium py-2 px-3 rounded-md transition-colors" data-prompt="${CSS.escape(finalPrompt)}">Copy</button>
-                            <button class="save-btn flex-1 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900 text-sm font-medium py-2 px-3 rounded-md transition-colors" data-prompt="${CSS.escape(finalPrompt)}">Save to Library</button>
+                            <button class="copy-btn flex-1 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-sm font-medium py-2 px-3 rounded-md transition-colors" data-prompt="${encodeURIComponent(finalPrompt)}">Copy</button>
+                            <button class="save-btn flex-1 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900 text-sm font-medium py-2 px-3 rounded-md transition-colors" data-prompt="${encodeURIComponent(finalPrompt)}">Save to Library</button>
                         </div>
                     `;
                     tabsNav.appendChild(tabButton);
@@ -814,15 +814,27 @@ Follow these strict formatting rules for every prompt you return:
             tabsPanels.addEventListener('click', e => {
                 const target = e.target.closest('button');
                 if (!target) return;
-                const unescapedPrompt = CSS.unescape(target.dataset.prompt);
+
+                const encodedPrompt = target.dataset.prompt;
+                if (!encodedPrompt) return;
+
+                let decodedPrompt;
+                try {
+                    decodedPrompt = decodeURIComponent(encodedPrompt);
+                } catch (error) {
+                    console.error('Failed to decode prompt', error);
+                    showToast('Unable to process the selected prompt.');
+                    return;
+                }
+
                 if (target.classList.contains('copy-btn')) {
-                    navigator.clipboard.writeText(unescapedPrompt).then(() => {
+                    navigator.clipboard.writeText(decodedPrompt).then(() => {
                         target.textContent = 'Copied!';
                         setTimeout(() => { target.textContent = 'Copy' }, 2000);
                     });
                 }
                 if (target.classList.contains('save-btn')) {
-                    savePrompt(unescapedPrompt);
+                    savePrompt(decodedPrompt);
                     target.textContent = 'Saved!';
                     target.disabled = true;
                 }
