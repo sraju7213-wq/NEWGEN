@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RajuPrompter - AI Prompt Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Base styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Scrollbar styles for a modern look */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937; /* dark:bg-gray-800 */
+        }
+        .dark ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+        .light ::-webkit-scrollbar-track {
+            background: #f3f4f6;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563; /* dark:bg-gray-600 */
+            border-radius: 10px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+        }
+        .light ::-webkit-scrollbar-thumb {
+            background: #9ca3af;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280; /* dark:bg-gray-500 */
+        }
+        .dark ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+        .light ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+        
+        /* Custom styles for sliders */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 5px;
+            background: #374151; /* dark:bg-gray-700 */
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+        }
+        .dark input[type="range"] {
+             background: #374151;
+        }
+        .light input[type="range"] {
+             background: #d1d5db;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #6366f1; /* accent color */
+            cursor: pointer;
+            border: 3px solid #111827; /* dark:bg-gray-900 */
+        }
+        
+        .dark input[type="range"]::-webkit-slider-thumb {
+            border-color: #111827;
+        }
+        .light input[type="range"]::-webkit-slider-thumb {
+            border-color: #ffffff;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #6366f1;
+            cursor: pointer;
+            border: 3px solid #111827; /* dark:bg-gray-900 */
+        }
+        .dark input[type="range"]::-moz-range-thumb {
+            border-color: #111827;
+        }
+        .light input[type="range"]::-moz-range-thumb {
+            border-color: #ffffff;
+        }
+
+        /* Custom toggle switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 28px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #374151; /* dark:bg-gray-700 */
+            transition: .4s;
+            border-radius: 28px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #6366f1; /* accent color */
+        }
+        input:checked + .slider:before {
+            transform: translateX(22px);
+        }
+        .light .slider {
+            background-color: #ccc;
+        }
+
+        /* Transition classes */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Library modal styles */
+        #libraryModal {
+            transition: opacity 0.3s ease;
+        }
+        #libraryModal.hidden {
+            pointer-events: none;
+        }
+
+        /* Spinner for loading state */
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+    <script>
+        // Set theme on initial load
+        if (localStorage.theme === 'light' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: light)').matches)) {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.classList.add('light');
+        } else {
+            document.documentElement.classList.add('dark');
+            document.documentElement.classList.remove('light');
+        }
+    </script>
+</head>
+<body class="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300">
+
+    <!-- App Container -->
+    <div id="app" class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-40 w-full border-b border-gray-200 dark:border-gray-800">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center space-x-4">
+                        <svg class="w-8 h-8 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.898 20.623L17.25 21.75l.352-1.127a3.375 3.375 0 002.098-2.098l1.127-.352-1.127-.352a3.375 3.375 0 00-2.098-2.098l-.352-1.127-.352 1.127a3.375 3.375 0 00-2.098 2.098l-1.127.352 1.127.352a3.375 3.375 0 002.098 2.098z" />
+                        </svg>
+                        <h1 class="text-xl font-bold text-gray-900 dark:text-white">RajuPrompter</h1>
+                    </div>
+                    <div class="hidden md:flex items-center space-x-6">
+                        <a href="#" class="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors">Features</a>
+                        <a href="#" class="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors">How It Works</a>
+                        <a href="#" class="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors">Community</a>
+                    </div>
+                    <div class="flex items-center">
+                        <button id="theme-toggle" type="button" class="text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 rounded-lg text-sm p-2.5">
+                            <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                            <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <!-- Left Column -->
+                <div class="lg:col-span-4 space-y-8">
+                    
+                    <!-- Workflow & Platform Card -->
+                    <div class="bg-white dark:bg-gray-800/50 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 p-6">
+                        <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Workflow & Platform</h3>
+                        <label for="workflow" class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Choose a workflow</label>
+                        <select id="workflow" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-indigo-500 dark:focus:border-indigo-500">
+                            <option>Midjourney</option>
+                            <option>Stable Diffusion (SDXL)</option>
+                            <option>DALL-E 3</option>
+                            <option>Leonardo AI</option>
+                        </select>
+                    </div>
+
+                    <!-- Image & Prompt Settings Card -->
+                    <div class="bg-white dark:bg-gray-800/50 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 p-6">
+                        <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Image & Prompt Settings</h3>
+                        <div class="space-y-4">
+                            <!-- Image Dimensions -->
+                            <div>
+                                <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Image Dimensions</label>
+                                <div class="flex items-center space-x-2">
+                                    <input type="number" id="width" placeholder="Width" max="2000" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                    <span class="text-gray-500 dark:text-gray-400">x</span>
+                                    <input type="number" id="height" placeholder="Height" max="2000" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                </div>
+                            </div>
+                            <!-- Character/Word Count -->
+                            <div>
+                                <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Counts</label>
+                                <div class="text-sm text-gray-500 dark:text-gray-400 flex justify-between">
+                                    <span id="char-count">0/2000 characters</span>
+                                    <span id="word-count">0 words</span>
+                                </div>
+                            </div>
+                            <!-- Quality Slider -->
+                            <div>
+                                <label for="quality" class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Quality: <span id="quality-value">75</span>%</label>
+                                <input id="quality" type="range" min="0" max="100" value="75" class="w-full h-2 rounded-lg appearance-none cursor-pointer">
+                            </div>
+                            <!-- Platform Optimized Toggle -->
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Platform Optimized</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="optimized-toggle" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Image Upload Card -->
+                    <div class="bg-white dark:bg-gray-800/50 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 p-6">
+                        <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Image Upload</h3>
+                        <div id="image-drop-area" class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-md cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-400 transition-colors">
+                            <div class="space-y-1 text-center">
+                                <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                                <div class="flex text-sm text-gray-600 dark:text-gray-400">
+                                    <label for="file-upload" class="relative cursor-pointer bg-white dark:bg-gray-800 rounded-md font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 focus-within:outline-none">
+                                        <span>Browse Files</span>
+                                        <input id="file-upload" name="file-upload" type="file" class="sr-only" accept="image/png, image/jpeg, image/webp">
+                                    </label>
+                                    <p class="pl-1">or drag and drop</p>
+                                </div>
+                                <p class="text-xs text-gray-500 dark:text-gray-500">Supports JPG, PNG, WebP up to 10MB</p>
+                            </div>
+                        </div>
+                         <div class="mt-4">
+                            <label for="describe-type" class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Choose how the AI should describe your image</label>
+                            <select id="describe-type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-indigo-500 dark:focus:border-indigo-500">
+                                <option>Analyze Scene</option>
+                                <option>Describe Style</option>
+                                <option>Identify Objects</option>
+                                <option>Generate Artistic Interpretation</option>
+                            </select>
+                        </div>
+                        <button id="describe-image-btn" disabled class="mt-4 w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2.5 px-4 rounded-lg transition-colors duration-300 flex items-center justify-center space-x-2 disabled:bg-gray-500 dark:disabled:bg-gray-600 disabled:cursor-not-allowed">
+                             <!-- Will be populated by JS -->
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right Column -->
+                <div class="lg:col-span-8 space-y-8">
+                    
+                    <!-- Image Preview Card -->
+                    <div id="image-preview-card" class="bg-white dark:bg-gray-800/50 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 p-6 hidden">
+                        <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Image Preview</h3>
+                        <div class="relative">
+                            <img id="image-preview" src="#" alt="Image Preview" class="rounded-lg max-h-64 mx-auto"/>
+                            <button id="remove-image-btn" class="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1.5 hover:bg-black/75 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                    
+                     <!-- Main Prompt Editor & Output Card -->
+                    <div class="bg-white dark:bg-gray-800/50 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Prompt Editor</h3>
+                             <button id="open-library-btn" class="flex items-center space-x-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
+                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                                 <span>Library</span>
+                            </button>
+                        </div>
+                        <textarea id="main-prompt" rows="6" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 dark:bg-gray-700/50 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white resize-y" placeholder="Enter a base prompt here, or upload an image and click 'Describe with AI ✨' to get started."></textarea>
+                        <button id="generate-btn" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-300 flex items-center justify-center space-x-2 disabled:bg-gray-500 dark:disabled:bg-gray-600 disabled:cursor-not-allowed">
+                             <!-- Will be populated by JS -->
+                        </button>
+
+                        <div id="output-container" class="mt-6 hidden">
+                            <!-- Tabs -->
+                            <div class="border-b border-gray-200 dark:border-gray-700">
+                                <nav id="tabs-nav" class="-mb-px flex space-x-6 overflow-x-auto" aria-label="Tabs"></nav>
+                            </div>
+                            <!-- Tab Panels -->
+                            <div id="tabs-panels" class="mt-4"></div>
+                        </div>
+                    </div>
+
+                    <!-- Random Prompt Shortcuts Card -->
+                    <div class="bg-white dark:bg-gray-800/50 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 p-6">
+                        <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Quick Start Prompts</h3>
+                        <div id="random-prompts-container" class="flex flex-wrap gap-2">
+                            <!-- Buttons will be injected by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">&copy; 2025 RajuPrompter. All rights reserved.</p>
+                    <div class="flex space-x-6">
+                        <a href="#" class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Privacy Policy</a>
+                        <a href="#" class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Terms of Service</a>
+                        <a href="#" class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">GitHub</a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+    
+    <!-- Prompt Library Modal -->
+    <div id="libraryModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 hidden opacity-0">
+        <div id="libraryModalContent" class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col transform scale-95 transition-all duration-300">
+            <div class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
+                <h2 class="text-xl font-bold">Prompt Library</h2>
+                <button id="close-library-btn" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div id="library-list" class="p-6 overflow-y-auto space-y-3">
+                <!-- Library items will be injected here -->
+            </div>
+            <div id="library-empty-state" class="p-10 text-center text-gray-500 dark:text-gray-400 hidden">
+                <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                <p class="mt-4">Your saved prompts will appear here.</p>
+                <p class="text-sm">Generate some prompts and click "Save to Library".</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-red-500 text-white py-2 px-4 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300">
+        <p id="toast-message">Error message</p>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const themeToggleBtn = document.getElementById('theme-toggle');
+            const darkIcon = document.getElementById('theme-toggle-dark-icon');
+            const lightIcon = document.getElementById('theme-toggle-light-icon');
+            const mainPrompt = document.getElementById('main-prompt');
+            const charCountEl = document.getElementById('char-count');
+            const wordCountEl = document.getElementById('word-count');
+            const qualitySlider = document.getElementById('quality');
+            const qualityValueEl = document.getElementById('quality-value');
+            const imageDropArea = document.getElementById('image-drop-area');
+            const fileUpload = document.getElementById('file-upload');
+            const imagePreviewCard = document.getElementById('image-preview-card');
+            const imagePreview = document.getElementById('image-preview');
+            const removeImageBtn = document.getElementById('remove-image-btn');
+            const describeImageBtn = document.getElementById('describe-image-btn');
+            const generateBtn = document.getElementById('generate-btn');
+            const outputContainer = document.getElementById('output-container');
+            const tabsNav = document.getElementById('tabs-nav');
+            const tabsPanels = document.getElementById('tabs-panels');
+            const randomPromptsContainer = document.getElementById('random-prompts-container');
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toast-message');
+            
+            // Library Modal Elements
+            const libraryModal = document.getElementById('libraryModal');
+            const libraryModalContent = document.getElementById('libraryModalContent');
+            const openLibraryBtn = document.getElementById('open-library-btn');
+            const closeLibraryBtn = document.getElementById('close-library-btn');
+            const libraryList = document.getElementById('library-list');
+            const libraryEmptyState = document.getElementById('library-empty-state');
+            
+            // --- App State ---
+            let promptLibrary = JSON.parse(localStorage.getItem('rajuPrompterLibrary')) || [];
+            let uploadedImageData = { base64: null, mimeType: null };
+
+            // --- UI Initial Setup ---
+            const setupInitialUI = () => {
+                setButtonLoading(generateBtn, false, 'Generate with AI ✨');
+                setButtonLoading(describeImageBtn, false, 'Describe with AI ✨');
+            };
+
+            // --- Theme Toggling ---
+            const toggleTheme = () => {
+                const isDark = document.documentElement.classList.toggle('dark');
+                document.documentElement.classList.toggle('light', !isDark);
+                localStorage.theme = isDark ? 'dark' : 'light';
+                updateThemeIcons();
+            };
+
+            const updateThemeIcons = () => {
+                if (document.documentElement.classList.contains('dark')) {
+                    lightIcon.classList.remove('hidden');
+                    darkIcon.classList.add('hidden');
+                } else {
+                    lightIcon.classList.add('hidden');
+                    darkIcon.classList.remove('hidden');
+                }
+            };
+            themeToggleBtn.addEventListener('click', toggleTheme);
+            updateThemeIcons();
+
+            // --- Helper Functions ---
+            const showToast = (message) => {
+                toastMessage.textContent = message;
+                toast.classList.remove('translate-y-20', 'opacity-0');
+                setTimeout(() => {
+                    toast.classList.add('translate-y-20', 'opacity-0');
+                }, 3000);
+            };
+
+            const setButtonLoading = (button, isLoading, defaultText) => {
+                if (isLoading) {
+                    button.disabled = true;
+                    button.innerHTML = `
+                        <svg class="spinner w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Processing...</span>`;
+                } else {
+                    button.disabled = false;
+                    const icon = defaultText.includes('Describe') ? 
+                        `<svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.375a9.737 9.737 0 007.46-3.112M12 18.375a9.733 9.733 0 01-7.46-3.112M12 18.375v3.75M9.344 15.263a4.5 4.5 0 015.312 0M15.75 11.25a3.375 3.375 0 00-6.75 0" /></svg>` :
+                        `<svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>`;
+                    button.innerHTML = `${icon}<span>${defaultText}</span>`;
+                }
+            };
+            
+            // --- Prompt Input Handling ---
+            const updateCounts = () => {
+                const text = mainPrompt.value;
+                const charCount = text.length;
+                const words = text.trim() ? text.trim().split(/\s+/) : [];
+                const wordCount = words.length;
+
+                charCountEl.textContent = `${charCount}/2000 characters`;
+                wordCountEl.textContent = `${wordCount} words`;
+                generateBtn.disabled = text.trim().length === 0;
+            };
+            mainPrompt.addEventListener('input', updateCounts);
+            updateCounts(); 
+
+            // --- Quality Slider ---
+            qualitySlider.addEventListener('input', () => {
+                qualityValueEl.textContent = qualitySlider.value;
+            });
+
+            // --- Image Upload Handling ---
+            const handleFiles = (files) => {
+                const file = files[0];
+                if (file && file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        imagePreview.src = e.target.result;
+                        uploadedImageData = {
+                            base64: e.target.result.split(',')[1],
+                            mimeType: file.type
+                        };
+                        imagePreviewCard.classList.remove('hidden');
+                        describeImageBtn.disabled = false;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                imageDropArea.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false);
+            });
+            ['dragenter', 'dragover'].forEach(eventName => {
+                imageDropArea.addEventListener(eventName, () => imageDropArea.classList.add('border-indigo-500', 'dark:border-indigo-400'), false);
+            });
+            ['dragleave', 'drop'].forEach(eventName => {
+                imageDropArea.addEventListener(eventName, () => imageDropArea.classList.remove('border-indigo-500', 'dark:border-indigo-400'), false);
+            });
+
+            imageDropArea.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files), false);
+            fileUpload.addEventListener('change', (e) => handleFiles(e.target.files), false);
+            removeImageBtn.addEventListener('click', () => {
+                imagePreview.src = '#';
+                imagePreviewCard.classList.add('hidden');
+                fileUpload.value = '';
+                uploadedImageData = { base64: null, mimeType: null };
+                describeImageBtn.disabled = true;
+            });
+            
+            // --- Gemini API Integration ---
+            const callGeminiAPI = async (payload) => {
+                const apiKey = ""; // Per instructions, this is populated by the environment.
+                const model = 'gemini-2.5-flash-preview-05-20';
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+                let response;
+                let delay = 1000;
+                for (let i = 0; i < 5; i++) { // 5 retries with exponential backoff
+                    try {
+                        response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (response.ok) {
+                            const result = await response.json();
+                            const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                            if (text) return text;
+                            throw new Error("Invalid response structure from Gemini API. Check console for details.");
+                        } else if (response.status === 429) {
+                            console.warn(`Gemini API throttled. Retrying in ${delay / 1000}s...`);
+                            await new Promise(res => setTimeout(res, delay));
+                            delay *= 2;
+                        } else {
+                            const errorBody = await response.json();
+                            console.error("Gemini API Error:", errorBody);
+                            throw new Error(`API request failed: ${errorBody.error?.message || response.statusText}`);
+                        }
+                    } catch (error) {
+                        console.error(`Attempt ${i+1} failed:`, error.message);
+                        if (i === 4) throw error; // Rethrow after last attempt
+                    }
+                }
+            };
+            
+            // --- AI-Powered Features ---
+            describeImageBtn.addEventListener('click', async () => {
+                if (!uploadedImageData.base64) {
+                    showToast("Please upload an image first.");
+                    return;
+                }
+                
+                setButtonLoading(describeImageBtn, true);
+                const describeType = document.getElementById('describe-type').value;
+                
+                const visionPrompts = {
+                    'Analyze Scene': "Provide a detailed, comprehensive description of this scene for a text-to-image AI. Mention the setting, key subjects, their actions, the overall mood, and the lighting. Be descriptive and clear.",
+                    'Describe Style': "Analyze the artistic style of this image for a text-to-image AI. Describe the medium (e.g., photograph, oil painting, digital art), the color palette, texture, composition, and the overall aesthetic (e.g., surrealist, photorealistic, minimalist).",
+                    'Identify Objects': "List the main objects and subjects present in this image with high precision, formatted as a comma-separated list suitable for a text-to-image prompt.",
+                    'Generate Artistic Interpretation': "Provide a creative and artistic interpretation of this image for a text-to-image AI. Don't just describe what you see, but evoke a feeling or story. Use metaphorical and vivid language to create an inspiring prompt."
+                };
+
+                const userPrompt = visionPrompts[describeType] || "Describe this image for a text-to-image prompt.";
+
+                const payload = {
+                    contents: [{
+                        parts: [
+                            { text: userPrompt },
+                            { inlineData: { mimeType: uploadedImageData.mimeType, data: uploadedImageData.base64 }}
+                        ]
+                    }]
+                };
+
+                try {
+                    const description = await callGeminiAPI(payload);
+                    mainPrompt.value = description;
+                    updateCounts();
+                } catch (error) {
+                    showToast(`Error describing image: ${error.message}`);
+                } finally {
+                    setButtonLoading(describeImageBtn, false, 'Describe with AI ✨');
+                }
+            });
+
+            generateBtn.addEventListener('click', async () => {
+                const basePrompt = mainPrompt.value;
+                if (!basePrompt.trim()) {
+                    showToast("Please enter a base prompt.");
+                    return;
+                }
+                
+                setButtonLoading(generateBtn, true);
+                
+                const systemInstruction = "You are an expert prompt engineer for advanced text-to-image AI models like Midjourney and DALL-E 3. Your goal is to take a user's basic idea and expand it into high-quality, detailed, and creative prompts. Always respond with a valid JSON object matching the provided schema.";
+                const userQuery = `Based on the user's prompt: "${basePrompt}", generate a response. Create one "Optimized" version that refines the user's prompt for clarity and detail, and three distinct "Creative" variations that explore different artistic styles or interpretations.`;
+
+                const payload = {
+                    contents: [{ parts: [{ text: userQuery }] }],
+                    systemInstruction: { parts: [{ text: systemInstruction }] },
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "OBJECT",
+                            properties: {
+                                "variations": {
+                                    type: "ARRAY",
+                                    items: {
+                                        type: "OBJECT",
+                                        properties: {
+                                            "title": { "type": "STRING" },
+                                            "prompt": { "type": "STRING" }
+                                        },
+                                        required: ["title", "prompt"]
+                                    }
+                                }
+                            },
+                            required: ["variations"]
+                        }
+                    }
+                };
+
+                try {
+                    const jsonResponse = await callGeminiAPI(payload);
+                    const parsed = JSON.parse(jsonResponse);
+                    if (parsed.variations && parsed.variations.length > 0) {
+                        renderOutputs(parsed.variations);
+                    } else {
+                        throw new Error("AI did not return valid variations.");
+                    }
+                } catch (error) {
+                    showToast(`Error generating prompts: ${error.message}`);
+                    outputContainer.classList.add('hidden');
+                } finally {
+                    setButtonLoading(generateBtn, false, 'Generate with AI ✨');
+                }
+            });
+            
+            // --- Platform Parameters & Output Rendering ---
+            const getPlatformParameters = (basePrompt) => {
+                const workflow = document.getElementById('workflow').value;
+                const width = document.getElementById('width').value;
+                const height = document.getElementById('height').value;
+                const quality = qualitySlider.value;
+                const isOptimized = document.getElementById('optimized-toggle').checked;
+                
+                if (!isOptimized) return '';
+                let params = '';
+                if (width && height) params += ` --ar ${width}:${height}`;
+                
+                switch (workflow) {
+                    case 'Midjourney':
+                        if (quality > 80) params += ' --q 2';
+                        else if (quality > 50) params += ' --q 1';
+                        if (basePrompt.toLowerCase().includes('photorealistic')) params += ' --style raw';
+                        params += ' --v 6.0';
+                        break;
+                    case 'Stable Diffusion (SDXL)':
+                        if (quality > 75) params += ', 8k, ultra-high resolution';
+                        if (quality < 25) params += ', blurry, low quality';
+                        break;
+                }
+                return params;
+            }
+            
+            const renderOutputs = (variations) => {
+                tabsNav.innerHTML = '';
+                tabsPanels.innerHTML = '';
+                outputContainer.classList.add('hidden');
+
+                if (variations.length === 0) return;
+
+                variations.forEach((variation, index) => {
+                    const finalPrompt = (variation.prompt + getPlatformParameters(variation.prompt)).trim();
+
+                    const tabButton = document.createElement('button');
+                    tabButton.textContent = variation.title;
+                    tabButton.className = `whitespace-nowrap py-3 px-4 md:px-1 border-b-2 font-medium text-sm ${index === 0 ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-500'}`;
+                    tabButton.dataset.tab = `tab-${index}`;
+                    
+                    const tabPanel = document.createElement('div');
+                    tabPanel.id = `tab-${index}`;
+                    tabPanel.className = `p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg ${index === 0 ? '' : 'hidden'}`;
+                    tabPanel.innerHTML = `
+                        <p class="text-gray-800 dark:text-gray-200 break-words mb-4">${finalPrompt}</p>
+                        <div class="flex space-x-2">
+                            <button class="copy-btn flex-1 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-sm font-medium py-2 px-3 rounded-md transition-colors" data-prompt="${CSS.escape(finalPrompt)}">Copy</button>
+                            <button class="save-btn flex-1 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900 text-sm font-medium py-2 px-3 rounded-md transition-colors" data-prompt="${CSS.escape(finalPrompt)}">Save to Library</button>
+                        </div>
+                    `;
+                    tabsNav.appendChild(tabButton);
+                    tabsPanels.appendChild(tabPanel);
+                });
+                
+                outputContainer.classList.remove('hidden');
+                outputContainer.classList.add('fade-in');
+            }
+
+            tabsNav.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON') {
+                    tabsNav.querySelectorAll('button').forEach(btn => btn.className = 'whitespace-nowrap py-3 px-4 md:px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-500');
+                    tabsPanels.querySelectorAll('div').forEach(panel => panel.classList.add('hidden'));
+                    e.target.className = 'whitespace-nowrap py-3 px-4 md:px-1 border-b-2 font-medium text-sm border-indigo-500 text-indigo-600 dark:text-indigo-400';
+                    document.getElementById(e.target.dataset.tab).classList.remove('hidden');
+                }
+            });
+
+            // --- Quick Start Prompts ---
+            const quickStartPrompts = ['Cyberpunk City', 'Fantasy Landscape', 'Photorealistic Portrait', 'Vintage Film Look', 'Anime Character', 'Abstract 3D', 'Gothic Interior', 'Underwater Kingdom'];
+            const quickStartBasePrompts = {
+                'Cyberpunk City': 'A sprawling cyberpunk city at night, neon signs reflecting on the wet streets, flying vehicles weaving through massive skyscrapers, cinematic, Blade Runner aesthetic.',
+                'Fantasy Landscape': 'An epic fantasy landscape with a majestic castle perched on a cliff, a waterfall cascading into a lush valley, dragons flying in the sky, hyperdetailed, digital painting.',
+                'Photorealistic Portrait': 'A photorealistic close-up portrait of an elderly woman with deep wrinkles and kind eyes, natural lighting, sharp focus, 8k resolution, Canon EOS R5.',
+                'Vintage Film Look': 'A candid street photograph of a bustling 1970s New York City street, shot on Kodachrome film, grainy texture, warm tones, authentic retro style.',
+                'Anime Character': 'A full-body concept art of a futuristic anime warrior princess, sleek white and gold armor, wielding a glowing energy sword, dynamic pose, studio ghibli inspired.',
+                'Abstract 3D': 'An abstract 3D render of iridescent crystalline structures floating in a cosmic nebula, intricate details, octane render, beautiful lighting, mesmerizing patterns.',
+                'Gothic Interior': 'The interior of a massive gothic cathedral, sunlight streaming through stained glass windows, creating dramatic light rays, sense of scale and awe, wide-angle lens.',
+                'Underwater Kingdom': 'A vibrant and bustling underwater city of Atlantis, bioluminescent coral reefs, futuristic dome structures, schools of exotic fish swimming by, fantasy concept art.'
+            };
+
+            randomPromptsContainer.innerHTML = quickStartPrompts.map(p => `<button class="quick-prompt-btn text-sm font-medium bg-gray-100 dark:bg-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 py-1.5 px-3 rounded-full transition-colors">${p}</button>`).join('');
+
+            randomPromptsContainer.addEventListener('click', (e) => {
+                if(e.target.classList.contains('quick-prompt-btn')) {
+                    mainPrompt.value = quickStartBasePrompts[e.target.textContent];
+                    updateCounts();
+                    mainPrompt.focus();
+                }
+            });
+
+            // --- Library and Copy/Save Functionality ---
+            tabsPanels.addEventListener('click', e => {
+                const target = e.target.closest('button');
+                if (!target) return;
+                const unescapedPrompt = CSS.unescape(target.dataset.prompt);
+                if (target.classList.contains('copy-btn')) {
+                    navigator.clipboard.writeText(unescapedPrompt).then(() => {
+                        target.textContent = 'Copied!';
+                        setTimeout(() => { target.textContent = 'Copy' }, 2000);
+                    });
+                }
+                if (target.classList.contains('save-btn')) {
+                    savePrompt(unescapedPrompt);
+                    target.textContent = 'Saved!';
+                    target.disabled = true;
+                }
+            });
+
+            const savePrompt = (prompt) => {
+                if (!promptLibrary.includes(prompt)) {
+                    promptLibrary.unshift(prompt);
+                    if (promptLibrary.length > 50) promptLibrary.pop();
+                    localStorage.setItem('rajuPrompterLibrary', JSON.stringify(promptLibrary));
+                }
+            };
+            
+            const deletePrompt = (index) => {
+                promptLibrary.splice(index, 1);
+                localStorage.setItem('rajuPrompterLibrary', JSON.stringify(promptLibrary));
+                renderLibrary();
+            };
+
+            const renderLibrary = () => {
+                if (promptLibrary.length === 0) {
+                    libraryList.classList.add('hidden');
+                    libraryEmptyState.classList.remove('hidden');
+                } else {
+                    libraryList.classList.remove('hidden');
+                    libraryEmptyState.classList.add('hidden');
+                    libraryList.innerHTML = promptLibrary.map((prompt, index) => `
+                        <div class="library-item bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg flex items-center justify-between gap-3 group">
+                            <p class="text-sm text-gray-700 dark:text-gray-300 truncate cursor-pointer" title="Load this prompt">${prompt}</p>
+                             <button data-index="${index}" class="delete-prompt-btn text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        </div>
+                    `).join('');
+                }
+            };
+
+            openLibraryBtn.addEventListener('click', () => {
+                renderLibrary();
+                libraryModal.classList.remove('hidden');
+                setTimeout(() => {
+                    libraryModal.classList.remove('opacity-0');
+                    libraryModalContent.classList.remove('scale-95');
+                }, 10);
+            });
+
+            const closeModal = () => {
+                libraryModal.classList.add('opacity-0');
+                libraryModalContent.classList.add('scale-95');
+                setTimeout(() => libraryModal.classList.add('hidden'), 300);
+            };
+
+            closeLibraryBtn.addEventListener('click', closeModal);
+            libraryModal.addEventListener('click', (e) => e.target === libraryModal && closeModal());
+            
+            libraryList.addEventListener('click', e => {
+                const deleteBtn = e.target.closest('.delete-prompt-btn');
+                const item = e.target.closest('.library-item');
+                if (deleteBtn) {
+                    deletePrompt(parseInt(deleteBtn.dataset.index));
+                } else if (item) {
+                    mainPrompt.value = item.querySelector('p').textContent;
+                    updateCounts();
+                    closeModal();
+                }
+            });
+
+            // --- Final Initialization ---
+            setupInitialUI();
+        });
+    </script>
+</body>
+</html>
+
+
