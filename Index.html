@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RajuPrompter - AI Prompt Generator</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        };
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -414,6 +419,7 @@
             const libraryEmptyState = document.getElementById('library-empty-state');
             
             // --- App State ---
+            const CHARACTER_LIMIT = 600;
             let promptLibrary = JSON.parse(localStorage.getItem('rajuPrompterLibrary')) || [];
             let uploadedImageData = { base64: null, mimeType: null };
 
@@ -468,6 +474,25 @@
                         `<svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>`;
                     button.innerHTML = `${icon}<span>${defaultText}</span>`;
                 }
+            };
+
+            const enforceCharacterLimit = (text, limit = CHARACTER_LIMIT) => {
+                if (!text) return '';
+                const trimmed = text.trim();
+                if (trimmed.length <= limit) return trimmed;
+
+                const truncated = trimmed.slice(0, limit - 1);
+                const breakpoints = ['. ', '! ', '? ', '; ', ', ', ' '];
+                for (const breakpoint of breakpoints) {
+                    const index = truncated.lastIndexOf(breakpoint);
+                    if (index !== -1 && index >= limit * 0.5) {
+                        const candidate = `${truncated.slice(0, index + (breakpoint.trim().length === 1 ? 1 : breakpoint.length - 1)).trim()}…`;
+                        return candidate.length <= limit ? candidate : `${candidate.slice(0, limit - 1)}…`;
+                    }
+                }
+
+                const fallback = `${truncated.trim()}…`;
+                return fallback.length <= limit ? fallback : `${fallback.slice(0, limit - 1)}…`;
             };
             
             // --- Text Area & Controls ---
@@ -599,10 +624,10 @@
                 const describeType = document.getElementById('describe-type').value;
                 
                 const visionPrompts = {
-                    'Analyze Scene': "Provide a detailed, comprehensive description of this scene for a text-to-image AI. Mention the setting, key subjects, their actions, the overall mood, and the lighting. Be descriptive and clear.",
-                    'Describe Style': "Analyze the artistic style of this image for a text-to-image AI. Describe the medium (e.g., photograph, oil painting, digital art), the color palette, texture, composition, and the overall aesthetic (e.g., surrealist, photorealistic, minimalist).",
-                    'Identify Objects': "List the main objects and subjects present in this image with high precision, formatted as a comma-separated list suitable for a text-to-image prompt.",
-                    'Generate Artistic Interpretation': "Provide a creative and artistic interpretation of this image for a text-to-image AI. Don't just describe what you see, but evoke a feeling or story. Use metaphorical and vivid language to create an inspiring prompt."
+                    'Analyze Scene': "Analyze the uploaded image and reply with a single paragraph under 600 characters that focuses on the environment, background elements, lighting, and perspective of the scene. Keep it concise and avoid unrelated character details unless they affect the setting.",
+                    'Describe Style': "Describe the artistic style of the uploaded image in under 600 characters. Mention the medium, color palette, texture, composition, and overall aesthetic in a direct, to-the-point way.",
+                    'Identify Objects': "List the main subjects, objects, clothing, or props that stand out in this image as a comma-separated series of short phrases. Stay under 600 characters and keep the list focused on tangible items.",
+                    'Generate Artistic Interpretation': "Provide an artistic interpretation under 600 characters that captures the mood, emotion, and visual story implied by the image. Reference color, expression, and composition to convey the atmosphere."
                 };
 
                 const userPrompt = visionPrompts[describeType] || "Describe this image for a text-to-image prompt.";
@@ -618,7 +643,11 @@
 
                 try {
                     const description = await callGeminiAPI(payload);
-                    mainPrompt.value = description;
+                    const limitedDescription = enforceCharacterLimit(description);
+                    if (limitedDescription.length < description.trim().length) {
+                        showToast(`Analysis trimmed to ${CHARACTER_LIMIT} characters for clarity.`);
+                    }
+                    mainPrompt.value = limitedDescription;
                     updateCounts();
                 } catch (error) {
                     showToast(`Error describing image: ${error.message}`);
@@ -636,8 +665,17 @@
                 
                 setButtonLoading(generateBtn, true);
                 
-                const systemInstruction = "You are an expert prompt engineer for advanced text-to-image AI models like Midjourney and DALL-E 3. Your goal is to take a user's basic idea and expand it into high-quality, detailed, and creative prompts. Always respond with a valid JSON object matching the provided schema.";
-                const userQuery = `Based on the user's prompt: "${basePrompt}", generate a response. Create one "Optimized" version that refines the user's prompt for clarity and detail, and three distinct "Creative" variations that explore different artistic styles or interpretations.`;
+                const systemInstruction = `You are an expert prompt engineer for advanced text-to-image AI models like Midjourney and DALL-E 3.
+Always respond with a valid JSON object matching the provided schema.
+Follow these strict formatting rules for every prompt you return:
+1. Compose a single-sentence prompt following this exact structure:
+[QUALITY TAGS] [STYLE OF PHOTO/ART] photo/painting/drawing/illustration of a (subject:1.x), (important feature:1.x), (more details:1.x), (pose or action:1.x), (framing:1.x), (setting/background:1.x), (lighting:1.x), (camera angle:1.x), (camera properties:1.x), rendered as [MEDIUM], in style of (photographer/artist:1.x).
+2. Replace the bracketed sections with imaginative content tailored to the user's concept.
+3. Always begin with quality descriptors such as "masterpiece", "best quality", or "photo-realistic" inside the opening square brackets.
+4. Wrap every essential character, object, environment, clothing item, and key attribute in parentheses with an emphasis multiplier between 1.1 and 1.4 (e.g., (silver hair:1.25)).
+5. Keep character and subject-specific tags in the middle of the prompt, placing medium descriptors together with the setting/background details toward the end before naming the artist.
+6. Maintain clear comma-separated clauses and ensure the prompt stays concise yet vivid while adhering to the structure above.`;
+                const userQuery = `Based on the user's prompt: "${basePrompt}", generate one "Optimized" prompt and three distinct "Creative" variations. Strictly follow the formatting rules in the system instructions, keep quality tags first, apply emphasis parentheses for every crucial character, object, environment, and clothing element, include the medium descriptor toward the end, and ensure each prompt remains a single imaginative sentence. Title the outputs exactly as "Optimized", "Creative Variation 1", "Creative Variation 2", and "Creative Variation 3".`;
 
                 const payload = {
                     contents: [{ parts: [{ text: userQuery }] }],
@@ -728,8 +766,8 @@
                     tabPanel.innerHTML = `
                         <p class="text-gray-800 dark:text-gray-200 break-words mb-4">${finalPrompt}</p>
                         <div class="flex space-x-2">
-                            <button class="copy-btn flex-1 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-sm font-medium py-2 px-3 rounded-md transition-colors" data-prompt="${CSS.escape(finalPrompt)}">Copy</button>
-                            <button class="save-btn flex-1 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900 text-sm font-medium py-2 px-3 rounded-md transition-colors" data-prompt="${CSS.escape(finalPrompt)}">Save to Library</button>
+                            <button class="copy-btn flex-1 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-sm font-medium py-2 px-3 rounded-md transition-colors" data-prompt="${encodeURIComponent(finalPrompt)}">Copy</button>
+                            <button class="save-btn flex-1 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900 text-sm font-medium py-2 px-3 rounded-md transition-colors" data-prompt="${encodeURIComponent(finalPrompt)}">Save to Library</button>
                         </div>
                     `;
                     tabsNav.appendChild(tabButton);
@@ -752,14 +790,14 @@
             // --- Quick Start Prompts ---
             const quickStartPrompts = ['Cyberpunk City', 'Fantasy Landscape', 'Photorealistic Portrait', 'Vintage Film Look', 'Anime Character', 'Abstract 3D', 'Gothic Interior', 'Underwater Kingdom'];
             const quickStartBasePrompts = {
-                'Cyberpunk City': 'A sprawling cyberpunk city at night, neon signs reflecting on the wet streets, flying vehicles weaving through massive skyscrapers, cinematic, Blade Runner aesthetic.',
-                'Fantasy Landscape': 'An epic fantasy landscape with a majestic castle perched on a cliff, a waterfall cascading into a lush valley, dragons flying in the sky, hyperdetailed, digital painting.',
-                'Photorealistic Portrait': 'A photorealistic close-up portrait of an elderly woman with deep wrinkles and kind eyes, natural lighting, sharp focus, 8k resolution, Canon EOS R5.',
-                'Vintage Film Look': 'A candid street photograph of a bustling 1970s New York City street, shot on Kodachrome film, grainy texture, warm tones, authentic retro style.',
-                'Anime Character': 'A full-body concept art of a futuristic anime warrior princess, sleek white and gold armor, wielding a glowing energy sword, dynamic pose, studio ghibli inspired.',
-                'Abstract 3D': 'An abstract 3D render of iridescent crystalline structures floating in a cosmic nebula, intricate details, octane render, beautiful lighting, mesmerizing patterns.',
-                'Gothic Interior': 'The interior of a massive gothic cathedral, sunlight streaming through stained glass windows, creating dramatic light rays, sense of scale and awe, wide-angle lens.',
-                'Underwater Kingdom': 'A vibrant and bustling underwater city of Atlantis, bioluminescent coral reefs, futuristic dome structures, schools of exotic fish swimming by, fantasy concept art.'
+                'Cyberpunk City': '[masterpiece, best quality, photo-realistic] neon-lit cityscape photo of a (lone hacker vigilante:1.3), (sleek reflective cybernetic coat:1.25), (holographic interface gauntlet:1.2), (confident stride through rain-slick street:1.15), (wide cinematic framing:1.1), (towering megacity alley with glowing billboards:1.25), (moody rain-soaked lighting:1.15), (low angle perspective:1.1), (Sony A7R IV, 24mm lens, long exposure light trails:1.1), rendered as digital art illustration, in style of (Syd Mead:1.2).',
+                'Fantasy Landscape': '[masterpiece, best quality, photo-realistic] epic matte painting of a (wandering elven ranger:1.3), (emerald cloak fluttering in wind:1.25), (runed moonlit longbow:1.2), (heroic lookout pose atop cliff:1.15), (sweeping wide-angle framing:1.1), (verdant valley with crystalline waterfall and castle spires:1.25), (golden dawn mist lighting:1.15), (aerial three-quarter perspective:1.1), (IMAX large-format depth, ultra-detailed foliage:1.1), rendered as digital art illustration, in style of (Guweiz:1.2).',
+                'Photorealistic Portrait': '[masterpiece, best quality, photo-realistic] studio portrait photo of a (wise elderly woman:1.3), (silver braided hair:1.25), (textured indigo silk shawl:1.2), (gentle smile meeting the lens:1.15), (tight beauty framing:1.1), (soft charcoal backdrop:1.15), (diffused Rembrandt lighting:1.15), (eye-level perspective:1.1), (Hasselblad H6D, 100mm lens, f/2.2, ISO 100:1.1), rendered as ultra-realistic digital photography, in style of (Annie Leibovitz:1.2).',
+                'Vintage Film Look': '[masterpiece, best quality, photo-realistic] candid street photo of a (1970s jazz musician:1.3), (tailored caramel leather jacket:1.25), (weathered saxophone case:1.2), (striding across crosswalk mid-step:1.15), (medium street-level framing:1.1), (Times Square packed with retro marquees:1.2), (warm tungsten marquee lighting:1.15), (slightly low angle perspective:1.1), (Kodachrome 64 film grain, 35mm lens, f/2.8:1.1), rendered as analog film photography, in style of (Garry Winogrand:1.2).',
+                'Anime Character': '[masterpiece, best quality, photo-realistic] dynamic anime illustration of a (futuristic warrior princess:1.35), (sleek white and gold exosuit armor:1.3), (luminescent energy katana:1.25), (mid-air reverse grip attack pose:1.2), (full-body action framing:1.15), (floating neon shrine over cyber city:1.25), (electric magenta rim lighting:1.15), (dramatic low angle perspective:1.1), (4k cel-shaded rendering, volumetric particles:1.1), rendered as digital art illustration, in style of (Yoji Shinkawa:1.2).',
+                'Abstract 3D': '[masterpiece, best quality, photo-realistic] surreal 3D render of a (fractaled crystal bloom:1.3), (iridescent prismatic petals:1.25), (hovering liquid chrome orbs:1.2), (gentle unfolding motion:1.15), (macro close-up framing:1.1), (cosmic nebula backdrop of teal and violet gas:1.25), (luminescent subsurface scattering glow:1.15), (isometric perspective:1.1), (Octane render, 8k resolution, depth of field bokeh:1.1), rendered as digital art illustration, in style of (Beeple:1.2).',
+                'Gothic Interior': '[masterpiece, best quality, photo-realistic] architectural photo of a (solitary robed acolyte:1.3), (embroidered crimson vestments:1.25), (ornate incense censer:1.2), (kneeling in reverent prayer:1.15), (grand wide-angle framing:1.1), (towering gothic cathedral nave with stained glass:1.25), (shafted sunlight and candlelight glow:1.15), (slightly elevated perspective:1.1), (tilt-shift lens, long exposure, rich HDR detail:1.1), rendered as digital art illustration, in style of (James Gurney:1.2).',
+                'Underwater Kingdom': '[masterpiece, best quality, photo-realistic] aquatic illustration of a (merfolk queen:1.35), (flowing bioluminescent fins:1.3), (translucent coral crown:1.25), (graceful conducting pose:1.2), (wide panoramic framing:1.1), (Atlantis domed city with coral spires:1.25), (dappled sunbeam caustic lighting:1.15), (slightly upward perspective:1.1), (cinematic volumetric scattering, ultra-detailed bubbles:1.1), rendered as digital art illustration, in style of (Loish:1.2).'
             };
 
             randomPromptsContainer.innerHTML = quickStartPrompts.map(p => `<button class="quick-prompt-btn text-sm font-medium bg-gray-100 dark:bg-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 py-1.5 px-3 rounded-full transition-colors">${p}</button>`).join('');
@@ -776,15 +814,32 @@
             tabsPanels.addEventListener('click', e => {
                 const target = e.target.closest('button');
                 if (!target) return;
-                const unescapedPrompt = CSS.unescape(target.dataset.prompt);
-                if (target.classList.contains('copy-btn')) {
-                    navigator.clipboard.writeText(unescapedPrompt).then(() => {
+
+                const isCopy = target.classList.contains('copy-btn');
+                const isSave = target.classList.contains('save-btn');
+                if (!isCopy && !isSave) return;
+
+                let prompt = '';
+                const encodedPrompt = target.dataset.prompt || '';
+                try {
+                    prompt = decodeURIComponent(encodedPrompt);
+                } catch (error) {
+                    prompt = encodedPrompt;
+                }
+
+                if (!prompt) return;
+
+                if (isCopy) {
+                    navigator.clipboard.writeText(prompt).then(() => {
                         target.textContent = 'Copied!';
-                        setTimeout(() => { target.textContent = 'Copy' }, 2000);
+                        setTimeout(() => { target.textContent = 'Copy'; }, 2000);
+                    }).catch(() => {
+                        showToast('Unable to copy prompt. Please try again.');
                     });
                 }
-                if (target.classList.contains('save-btn')) {
-                    savePrompt(unescapedPrompt);
+
+                if (isSave) {
+                    savePrompt(prompt);
                     target.textContent = 'Saved!';
                     target.disabled = true;
                 }
