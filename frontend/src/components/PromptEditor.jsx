@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FiSave, FiSparkles, FiUploadCloud, FiUsers, FiRefreshCw } from 'react-icons/fi';
+import { FiSave, FiZap, FiUploadCloud, FiUsers, FiRefreshCw } from 'react-icons/fi';
 import { usePromptCollaboration } from '../hooks/usePromptCollaboration';
 
 const emptyPrompt = {
@@ -87,7 +87,7 @@ const PromptEditor = ({
             Start new prompt
           </button>
           <button className="btn btn-primary" type="button" onClick={() => onGenerateSuggestion(form)}>
-            <FiSparkles />
+            <FiZap />
             <span style={{ marginLeft: '0.4rem' }}>AI refine</span>
           </button>
           <button className="btn btn-primary" type="submit" form="prompt-form" disabled={isSaving}>

@@ -100,6 +100,12 @@ Socket.IO is enabled on the backend server. The frontend connects with the activ
 
 When API keys are not supplied, the Gemini and Speech services respond with deterministic mock values to keep the UX functional for demos and automated tests.
 
+### Static Preview
+
+- The React client is configured to publish a static bundle under [`docs/`](docs/) so GitHub Pages can render the login experience without extra routing rules.
+- Run `npm run build` inside the `frontend` workspace whenever you want to refresh the preview assets. The command wipes and regenerates the contents of `docs/` via Vite's production build.
+- The static bundle uses a hash-based router so deep links work correctly on GitHub Pages. When the API backend is not running, the UI gracefully falls back to the authentication screen.
+
 ## Deployment Notes
 
 - Configure environment variables in your hosting platform (e.g., Vercel/Netlify for the frontend, Render/Heroku/AWS for the backend).

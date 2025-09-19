@@ -1,4 +1,4 @@
-import { FiActivity, FiBookOpen, FiSparkles } from 'react-icons/fi';
+import { FiActivity, FiBookOpen, FiStar } from 'react-icons/fi';
 
 const AnalyticsSummary = ({ data }) => {
   const promptCount = data?.promptStats?.reduce((acc, item) => acc + item.count, 0) || 0;
@@ -21,7 +21,7 @@ const AnalyticsSummary = ({ data }) => {
       </div>
       <div className="card">
         <div className="badge" style={{ marginBottom: '0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-          <FiSparkles /> AI insights
+          <FiStar /> AI insights
         </div>
         <h2 style={{ margin: 0 }}>{suggestionCount}</h2>
         <p className="muted">AI suggestions generated</p>
